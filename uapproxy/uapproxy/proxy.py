@@ -14,10 +14,12 @@
 """
 import functools
 from ua_parser import user_agent_parser
+from datetime import datetime
 import django
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import F
+from django.template.loader import render_to_string
 from hashlib import sha256
 import re
 import ipaddress
@@ -44,60 +46,70 @@ logger = logging.getLogger(__name__)
 
 flags.add_argument(
     '--uapproxy-add-unmatched',
-    type=bool,
-    default=False,
+    action='store_true',
     help='Add new policies for user-agents without policy matches.',
 )
 
 flags.add_argument(
-    '--uapproxy-add-ua',
-    type=bool,
-    default=True,
-    help='Adds a user-agent object at auto added polices.',
-)
-
-flags.add_argument(
     '--uapproxy-add-os',
-    type=bool,
-    default=True,
-    help='Adds a operating system object at auto added polices.',
+    action='store_true',
+    help='Add a operating system object at auto added policies.',
 )
 
 flags.add_argument(
     '--uapproxy-add-device',
-    type=bool,
-    default=False,
-    help='Adds a device object at auto added polices.',
+    action='store_true',
+    help='Add a device object at auto added policies.',
 )
 
 flags.add_argument(
     '--uapproxy-add-prefix',
-    type=bool,
-    default=False,
-    help='Adds a prefix object at auto added polices.',
+    action='store_true',
+    help='Add a prefix object at auto added policies.',
+)
+
+flags.add_argument(
+    '--uapproxy-add-pfx-ipv4-len',
+    type=int,
+    default=24,
+    help="Used prefix length on client's ipv4 addresses when adding prefix objects at auto added policies.",
+)
+
+flags.add_argument(
+    '--uapproxy-add-pfx-ipv6-len',
+    type=int,
+    default=64,
+    help="Used prefix length on client's ipv6 addresses when adding prefix objects at auto added policies.",
 )
 
 flags.add_argument(
     '--uapproxy-permit-unmatched',
-    type=bool,
-    default=True,
-    help='Permit unmatched user-agents.',
+    action='store_true',
+    help='Permit clients without any policy match.',
 )
 
 
 class CheckResult():
-    def __init__(self, permit, policy=None):
+    def __init__(self, permit, priority, uap, client_ip):
         self.permit = permit
-        self.policy = policy
+
+        if not permit:
+            self.context = {
+                'timestamp': datetime.now().isoformat(timespec='seconds'),
+                'priority': priority,
+                'uap': uap,
+                'client_ip': client_ip,
+            }
 
     def raise_rejected(self):
-        print(self.permit)
         if not self.permit:
+            body = render_to_string("uapproxy/denied.html", self.context)
+
             raise HttpRequestRejected(
                 status_code=403,
-                reason=b'Rejected by user-agent policy.',
-                headers={b'Location':b'http://127.0.0.1:8123'},
-                body=b'foo',
+                reason=b'User-agent access denied.',
+                headers={b'Content-Type':b'text/html; charset=utf-8'},
+                body=body.encode('utf8'),
             )
 
 class UapproxyPlugin(HttpProxyBasePlugin):
@@ -113,7 +125,7 @@ class UapproxyPlugin(HttpProxyBasePlugin):
             if policy.policy_check(uap, client_ip):
                 models.Policy.objects.filter(uuid=policy.uuid).update(
                     matches=(F("matches") + 1) % 2147483647)
-                return CheckResult(permit=policy.permit, policy=policy.priority)
+                return CheckResult(policy.permit, policy.priority, uap, client_ip)
 
         if self.flags.uapproxy_add_unmatched:
             # add new policy and auxillary objects if no policy has been found
@@ -124,19 +136,38 @@ class UapproxyPlugin(HttpProxyBasePlugin):
                 patch=uap['user_agent']['patch'],
             )
 
-            os, created = models.OperatingSystem.objects.get_or_create(
-                family=uap['os']['family'],
-                major=uap['os']['major'],
-                minor=uap['os']['minor'],
-                patch=uap['os']['patch'],
-                patch_minor=uap['os']['patch_minor'],
-            )
+            if self.flags.uapproxy_add_os:
+                os, created = models.OperatingSystem.objects.get_or_create(
+                    family=uap['os']['family'],
+                    major=uap['os']['major'],
+                    minor=uap['os']['minor'],
+                    patch=uap['os']['patch'],
+                    patch_minor=uap['os']['patch_minor'],
+                )
+            else:
+                os = None
 
-            device, created = models.Device.objects.get_or_create(
-                family=uap['device']['family'],
-                brand=uap['device']['brand'] or '',
-                model=uap['device']['model'] or '',
-            )
+            if self.flags.uapproxy_add_device:
+                device, created = models.Device.objects.get_or_create(
+                    family=uap['device']['family'],
+                    brand=uap['device']['brand'] or '',
+                    model=uap['device']['model'] or '',
+                )
+            else:
+                device = None
+
+            if self.flags.uapproxy_add_prefix:
+                if client_ip.version == 4:
+                    nw = ipaddress.ip_interface("{}/{}".format(client_ip, self.flags.uapproxy_add_pfx_ipv4_len))
+                else:
+                    nw = ipaddress.ip_interface("{}/{}".format(client_ip, self.flags.uapproxy_add_pfx_ipv6_len))
+
+                prefix, created = models.Prefix.objects.get_or_create(
+                    prefix=str(nw.network.network_address),
+                    length=nw.network.prefixlen,
+                )
+            else:
+                prefix = None
 
             policy, created = models.Policy.objects.get_or_create(
                 permit=self.flags.uapproxy_permit_unmatched,
@@ -145,12 +176,13 @@ class UapproxyPlugin(HttpProxyBasePlugin):
                 os=os,
                 os_comparator=models.Policy.COMP_EQ,
                 device=device,
+                prefix=prefix,
                 matches=1,
             )
 
-            return CheckResult(permit=policy.permit, policy=policy.priority)
+            return CheckResult(policy.permit, policy.priority, uap, client_ip)
 
-        return CheckResult(permit=self.flags.uapproxy_permit_unmatched)
+        return CheckResult(self.flags.uapproxy_permit_unmatched, None, uap, client_ip)
 
     def before_upstream_connection(
             self, request: HttpParser,
