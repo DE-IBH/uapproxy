@@ -96,6 +96,7 @@ class CheckResult():
         if not permit:
             self.context = {
                 'timestamp': datetime.now().isoformat(timespec='seconds'),
+                'permit': False,
                 'priority': priority,
                 'uap': uap,
                 'client_ip': client_ip,
@@ -103,7 +104,7 @@ class CheckResult():
 
     def raise_rejected(self):
         if not self.permit:
-            body = render_to_string("uapproxy/denied.html", self.context)
+            body = render_to_string("uapproxy/check.html", self.context)
 
             raise HttpRequestRejected(
                 status_code=403,

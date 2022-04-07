@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>User-agent access denied</title>
+    <style type="text/css">
+        #message {
+            border: 4px solid #d13239;
+            background-color: lightyellow;
+            padding: 0.5em;
+            margin: 0.5em;
+            width: 640px;
+        }
+
+        #message.permit {
+            border: 4px solid #007d44;
+        }
+
+        #message.unknown {
+            border: 4px solid gold;
+        }
+
+        #details {
+            font-family: monospace;
+            white-space: pre;
+            padding: 0.5em;
+            margin: 0.5em;
+            width: 640px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="message"{% if permit is None %} class="unknown"{% elif permit %} class="permit"{% endif %}>
+        {% if permit is None %}
+        <h1>User-agent access unknown</h1>
+        {% elif permit %}
+        <h1>User-agent access allowed</h1>
+        {% else %}
+        <h1>User-agent access denied</h1>
+        {% endif %}
+
+        <p>
+            {% if permit is None %}
+                The configured policy does not match your request at this time. Please contact your service provider if you feel this is incorrect.
+            {% elif permit %}
+                The configured policy allows your request to pass at this time. Please contact your service provider if you feel this is incorrect.
+            {% else %}
+                The configured policy prevents your request from being allowed at this time. Please contact your service provider if you feel this is incorrect.
+            {% endif %}
+        </p>
+
+    </div>
+    <div id="details">
+<b>Timestamp </b> {{ timestamp }}
+<b>Policy    </b> {{ priority }}
+
+<b>User-Agent</b> {{ uap.user_agent }}
+<b>OS        </b> {{ uap.os }}
+<b>Device    </b> {{ uap.device }}
+<b>Source IP </b> {{ client_ip }}
+    </div>
+</body>
+
+</html>
