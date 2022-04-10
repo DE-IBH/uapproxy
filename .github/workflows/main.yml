@@ -1,0 +1,74 @@
+name: docker publish
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+  release:
+    types:
+      - created
+      - edited
+      - prereleased
+      - published
+      - released
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Build django image
+        run: |
+          docker build . --file docker/Dockerfile --tag uapproxy
+          docker save uapproxy > /tmp/uapproxy.tar
+
+      - name: Upload django artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: uapproxy
+          path: /tmp/uapproxy.tar
+
+
+  push-release:
+    needs: ["build"]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+
+    steps:
+      - name: Log into registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
+
+      - name: Download django artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: uapproxy
+          path: /tmp
+
+      - name: Push images
+        run: |
+          docker load < /tmp/uapproxy.tar
+
+          IMAGE_ID=docker.pkg.github.com/${{ github.repository }}
+
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          echo IMAGE_ID =$IMAGE_ID
+          echo IMAGE_TAG=latest
+
+          docker tag uapproxy $IMAGE_ID/uapproxy:$VERSION
+
+          docker push $IMAGE_ID/uapproxy:$VERSION
