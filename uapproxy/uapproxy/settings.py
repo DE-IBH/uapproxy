@@ -83,7 +83,7 @@ WSGI_APPLICATION = 'uapproxy.wsgi.application'
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
 DATABASES = {
-    'default': env.db()
+    'default': env.db(default='sqlite:////srv/data/db/db.sqlite3')
 }
 
 # Cache

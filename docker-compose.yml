@@ -11,7 +11,6 @@ services:
     ports:
       - 3128:8899
     environment:
-      DATABASE_URL: sqlite:////srv/data/db/db.sqlite3
       # TODO: you must change the secret
       SECRET_KEY: django-insecure--szpmg)pmgr*f*mm%7$ua1!62(p3il*78(cy%4dld3dv!@eg7m
     volumes:
@@ -22,7 +21,6 @@ services:
     image: uapproxy
     command: django
     environment:
-      DATABASE_URL: sqlite:////srv/data/db/db.sqlite3
       # TODO: you must change the secret
       SECRET_KEY: django-insecure--szpmg)pmgr*f*mm%7$ua1!62(p3il*78(cy%4dld3dv!@eg7m
     volumes:
