@@ -1,0 +1,43 @@
+version: '3'
+
+services:
+  # proxy.py instance
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: uapproxy
+    command: proxy
+    ports:
+      - 3128:8899
+    environment:
+      DATABASE_URL: sqlite:////srv/data/db/db.sqlite3
+      # TODO: you must change the secret
+      SECRET_KEY: django-insecure--szpmg)pmgr*f*mm%7$ua1!62(p3il*78(cy%4dld3dv!@eg7m
+    volumes:
+      - sqlite-data:/srv/data/db
+
+  # Django admin frontend
+  django:
+    image: uapproxy
+    command: django
+    environment:
+      DATABASE_URL: sqlite:////srv/data/db/db.sqlite3
+      # TODO: you must change the secret
+      SECRET_KEY: django-insecure--szpmg)pmgr*f*mm%7$ua1!62(p3il*78(cy%4dld3dv!@eg7m
+    volumes:
+      - sqlite-data:/srv/data/db
+
+  # static assets for Django admin
+  static:
+    image: uapproxy
+    command: static
+
+  # # cache
+  # redis:
+  #   image: redis:6.0.16-alpine
+  #   # TODO: Adjust max memory!
+  #   # TODO: Set your redis secret!
+  #   command: redis-server --maxmemory 4096mb --maxmemory-policy volatile-lfu --requirepass {{ redis_secret }}
+volumes:
+  sqlite-data:

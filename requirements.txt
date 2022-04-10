@@ -1,0 +1,4 @@
+Django==4.0.3
+django-environ==0.8.1
+proxy.py==2.4.1
+ua-parser==0.10.0

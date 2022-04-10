@@ -10,7 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
+import os
+import email.utils
+import environ
 from pathlib import Path
+
+# Reading .env file
+env = environ.Env()
+environ.Env.read_env(env.str('ENV_FILE', default='.env'))
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,13 +28,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure--szpmg)pmgr*f*mm%7$ua1!62(p3il*78(cy%4dld3dv!@eg7m'
+SECRET_KEY = env.str('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool('DEBUG', default=False)
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 
 # Application definition
 
@@ -76,12 +83,14 @@ WSGI_APPLICATION = 'uapproxy.wsgi.application'
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': env.db()
 }
 
+# Cache
+# https://docs.djangoproject.com/en/4.0/ref/settings/#caches
+CACHES = {
+    'default': env.cache(default="locmemcache://uapproxy-default-cache")
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -105,9 +114,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = env.str('LANGUAGE_CODE', default='en-us')
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = env.str('TIME_ZONE', default='UTC')
 
 USE_I18N = True
 
@@ -118,11 +127,23 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-UAPPROXY_UAPARSER_TIMEOUT = 86400
-UAPPROXY_POLICY_TIMEOUT = 30
+# Email settings
+SERVER_EMAIL = env.str('SERVER_EMAIL', default='root@localhost')
+
+EMAIL_CONFIG = env.email_url('EMAIL_URL', default='dummymail://')
+vars().update(EMAIL_CONFIG)
+
+
+# Set Django admins for error notification
+ADMINS = email.utils.getaddresses([env.str('ADMINS', '')])
+
+# Uapproxy settings
+UAPPROXY_UAPARSER_TIMEOUT = env.int('UAPPROXY_UAPARSER_TIMEOUT', default=86400)
+UAPPROXY_POLICY_TIMEOUT = env.int('UAPPROXY_POLICY_TIMEOUT', default=30)
