@@ -40,12 +40,23 @@ The Django application is configured by the following environment variables. You
 
  The following Django settings are provided:
 
-- `[SECRET_KEY](https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-SECRET_KEY)=`
-- `[DEBUG](https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-DEBUG)=False`
-- `[ALLOWED_HOSTS](https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-ALLOWED_HOSTS)=[]`
-- `[LANGUAGE_CODE](https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-LANGUAGE_CODE)='en-us'`
-- `[TIME_ZONE](https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-TIME_ZONE)='UTC'`
+```python
+# TODO: You must set a secure secret!
+# https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-SECRET_KEY
+SECRET_KEY=
 
+# https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-DEBUG
+DEBUG=False
+
+# https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-ALLOWED_HOSTS
+ALLOWED_HOSTS=[]
+
+# https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-LANGUAGE_CODE
+LANGUAGE_CODE='en-us'
+
+# https://docs.djangoproject.com/en/4.0/ref/settings/#std:setting-TIME_ZONE
+TIME_ZONE='UTC'
+```
 
 Proxy
 _____
@@ -55,15 +66,21 @@ You can provide *proxy.py* settings as additional command parameters. The follow
 
 **--uapproxy-add-unmatched**
     Add new policies for user-agents without policy matches.
+
 **--uapproxy-add-os**
     Add a operating system object at auto added policies.
+
 **--uapproxy-add-device**
     Add a device object at auto added policies.
+
 **--uapproxy-add-prefix**
     Add a prefix object at auto added policies.
+
 **--uapproxy-add-pfx-ipv4-len UAPPROXY_ADD_PFX_IPV4_LEN**
     Used prefix length on client's ipv4 addresses when adding prefix objects at auto added policies.
+
 **--uapproxy-add-pfx-ipv6-len UAPPROXY_ADD_PFX_IPV6_LEN**
     Used prefix length on client's ipv6 addresses when adding prefix objects at auto added policies.
+
 **--uapproxy-permit-unmatched**
     Permit clients without any policy match.
